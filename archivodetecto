@@ -1,0 +1,217 @@
+/*
+SDL BASICO
+
+Definir limites de movimiento delos jugadores  CONSEGUIDO 18/06/2025 21:04
+hacer movimeinto de la pelota
+hacer las colisiones de la pelota con los bordes
+hacer las colisiones de la pelota con los jugadores
+
+SDL  TTF
+
+hacer diferentes pantallas [Manjarse con WASD/Flechitas y Enter y/o mouse y click]
+Inicio (Jugar, opciones, salir)
+Juego ( puntaje de cada uno, Tiempo restante)
+Pantalla de Pausa (Reanudar, Salir)
+
+SDL MIXER
+añadir sonidos a colisiones
+añadir sonidos al marcar un punto
+añadir sonidos al desplazarse por los menus
+
+PONG MEJORAS ULTRASECRETAS SECRETISIMAS
+
+SDL MIXER / TTF / IMAGE
+cargar el fondo osiloscopio
+iniciar el pong en modo osiloscopio
+Añadir a lo anterior soniditos de osiloscopio
+
+*/
+
+
+#include <SDL.h> //SDL basico
+#include <SDL_mixer.h> //audio con sld
+#include <SDL_image.h> //imagenes con esedeele
+#include <SDL_ttf.h> //manejar fuentes de texto en pantalla
+
+#include <fstream> // manejo de archivos
+
+#include <iostream>
+#include <Windows.h>
+#include <time.h>
+#include <string>
+
+using namespace std;
+
+const int WIN_WIDTH = 1000;
+const int WIN_HEIGHT = 600;
+const float FLAP_HEIGHT = (WIN_WIDTH / 10);
+const float FLAP_WIDTH = (WIN_HEIGHT / 20);
+const int VEL_FLAP = 15;
+const int VEL_PELOTA = 5;
+
+const int A = 10;
+
+void guardarPuntaje(string nombreArchivo, string nombreJugador, int puntajeJugador) {
+
+    fstream archivo;
+    archivo.open(nombreArchivo + ".csv", ios::app); // ios::in escribe al inicio y sobre escribe; ios::app escribe al final sin jorobar otros datos.
+
+    if (archivo.is_open()) {
+        archivo << nombreJugador << ";" << puntajeJugador << endl;
+    }
+    else cerr << "Error al abrir/crear el archivo " << endl;
+
+    archivo.close(); //siempre que se habre un archivo, se cierra al final.
+}
+
+int main(int argc, char* argv[]) {
+
+    srand(time(NULL)); //inicializamos la semilla
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        cerr << "Error al iniciar SDL: " << SDL_GetError() << endl;
+        return 1;
+    }
+
+    //genero un struct de nombre window usando la funcion de SDL_CreateWindow
+    //le paso el nombre de la ventana
+    //luego el eje x, luego el y,
+    //luego ancho, luego alto,
+    //luego una FLAG propia de la funcion la 4 es la shown, la 3 sirve para pantalla completa
+    SDL_Window* window = SDL_CreateWindow(
+        "Pong De Recreo",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        WIN_WIDTH, WIN_HEIGHT,
+        SDL_WINDOW_SHOWN
+    );
+
+    if (window == nullptr) {
+        cerr << "Error al crear la ventana: " << SDL_GetError() << endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+    if (renderer == nullptr) {
+        cerr << "Error al crear el renderer: " << SDL_GetError() << endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        cerr << "Error al iniciar SDL_image: " << IMG_GetError() << endl;
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    /*---------------------------------------------------------------------------------------------------------
+    
+    Para definir las posiciones inciales de los flaps utilice las propias medidas de los mimsmos como separadores
+    de esta forma en un futuro si quiero cambiar el ancho y largo de la pantalla puedo hacerlo sin ningun problema
+    y en sistesis no se rompe nada :)
+    
+    ----------------------------------------------------------------------------------------------------------------*/
+
+    SDL_Rect flapDer = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Azul (jugador 1)
+    SDL_Rect flapIzq = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Rojo (jugador 2
+   
+    int jugador1score = 0; //bastante autoexplicativo
+    int jugador2score = 0;
+    
+    struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
+        int velX = VEL_PELOTA;
+        int velY = VEL_PELOTA;
+        SDL_Rect rect = { WIN_WIDTH / 2, WIN_HEIGHT / 2, 10, 10 };
+    };
+
+    bola pelotita;
+
+    SDL_Event event;
+
+    //defino diferentes estados utiles
+    bool sound = 1;
+    bool running = 1;
+
+    while (running) {
+        //me dijo un pajarito que esto anda pero ni idea
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            }
+        }
+
+        //esta linea supercopada te permite leer el estado del teclado en TODO momento
+        //muy util para evitar conflictos en multiplayer
+        const Uint8* keystates = SDL_GetKeyboardState(NULL);
+
+        //movimiento para flapIzquierdo (WS) delimitados por la pantalla
+        if (keystates[SDL_SCANCODE_W] && flapIzq.y >= 0) flapIzq.y -= VEL_FLAP;
+        if (keystates[SDL_SCANCODE_S] && flapIzq.y <= (WIN_HEIGHT - FLAP_HEIGHT)) flapIzq.y += VEL_FLAP;
+
+        //movimiento para flapDerecho (Flechitas ArribaAbajo) delimitados por la pantalla
+        if (keystates[SDL_SCANCODE_UP] && flapDer.y >= 0) flapDer.y -= VEL_FLAP;
+        if (keystates[SDL_SCANCODE_DOWN] && flapDer.y <= (WIN_HEIGHT - FLAP_HEIGHT)) flapDer.y += VEL_FLAP;
+
+        //teclas de accesibilidad
+        if (keystates[SDL_SCANCODE_Q]) running = false;
+        if (keystates[SDL_SCANCODE_M]) sound = false;
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        //dibujo la pelotita de blanco
+        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
+        SDL_RenderFillRect(renderer, &pelotita.rect);
+
+        //manjeamos colisiones en borde superior e inferior
+        if (pelotita.rect.y <= 0 || pelotita.rect.y >= WIN_HEIGHT) {
+            pelotita.velY = -pelotita.velY;
+        }
+
+        //chequeamos si el jugador 2 anoto un punto
+        if (pelotita.rect.x <= WIN_WIDTH) {
+            jugador1score++;
+        }
+
+        //chequeamos si el jugador 2 anoto un punto
+        if (pelotita.rect.x <= 0 ) {
+            jugador2score++;
+        }
+
+        //chequeamos de forma bruta? colisiones con el jugador 1
+        if (flapDer.x >= pelotita.rect.x >= (flapDer.x + FLAP_HEIGHT)) {
+            pelotita.velX = -pelotita.velX;
+        }
+        //manejamos el movimiento de la pelota
+        pelotita.rect.x += pelotita.velX;
+        pelotita.rect.y += pelotita.velY;
+
+        //dibujar el flapIzquierdo
+        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        SDL_RenderFillRect(renderer, &flapIzq);
+
+
+        //dibujar el flapDerecho
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &flapDer);
+
+
+        //mostrar en pantalla
+        SDL_RenderPresent(renderer);
+
+        SDL_Delay(16); //demora de dibjuado entre bucles
+    }
+
+    //limpiamos la memoria
+    IMG_Quit();
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
+}
+
+
+
