@@ -2,9 +2,10 @@
 SDL BASICO
 
 Definir limites de movimiento delos jugadores  CONSEGUIDO 18/06/2025 21:04
-hacer movimeinto de la pelota
-hacer las colisiones de la pelota con los bordes
-hacer las colisiones de la pelota con los jugadores
+hacer movimeinto de la pelota                   CONSEGUIDO 21/06/2025 01:09
+hacer las colisiones de la pelota con los bordes CONSEGUIDO 21/06/2025 01:45
+hacer las colisiones de la pelota con los jugadores     CONSEGUIDO PARCIALMENTE, despues de todos los cuba libres nose como es que anda
+CONSEGUIDO 22/06/2025 tras razonar un poco mejor los codigos de mi yo borracho, los hice andar, que cosa copada
 
 SDL  TTF
 
@@ -41,13 +42,17 @@ Añadir a lo anterior soniditos de osiloscopio
 #include <string>
 
 using namespace std;
-
-const int WIN_WIDTH = 1000;
+/*------------------------------------------------------------------------------------------------------------------------------------------------------
+* Debido a que mis habilidades de programacion no son las mejores, debido a pequenieces y peculiaridades de los calculos involucrados, no puedo modificar
+* a voluntad la velocidad del la pelota o la pantalla sin romper algo de por medio, vamos a guardar algunos modos que sabemos que funcionan
+* una ves terminado el testing y llamemosles dia completo >:(>
+------------------------------------------------------------------------------------------------------------------------------------------------------*/
+const int WIN_WIDTH = 1200;
 const int WIN_HEIGHT = 600;
 const float FLAP_HEIGHT = (WIN_WIDTH / 10);
 const float FLAP_WIDTH = (WIN_HEIGHT / 20);
 const int VEL_FLAP = 15;
-const int VEL_PELOTA = 5;
+const float VEL_PELOTA = 10;
 
 const int A = 10;
 
@@ -110,7 +115,8 @@ int main(int argc, char* argv[]) {
     
     Para definir las posiciones inciales de los flaps utilice las propias medidas de los mimsmos como separadores
     de esta forma en un futuro si quiero cambiar el ancho y largo de la pantalla puedo hacerlo sin ningun problema
-    y en sistesis no se rompe nada :)
+    y en sistesis no se rompe nada :) nota menta 22/06/2025. ahora que vimos structs, la proxima vez lo metes todos
+    estos calculos raros en el struct y les das nombres adecuados, pero para la proxima, ahora no nos da el tiempo.
     
     ----------------------------------------------------------------------------------------------------------------*/
 
@@ -121,9 +127,9 @@ int main(int argc, char* argv[]) {
     int jugador2score = 0;
     
     struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
-        int velX = VEL_PELOTA;
-        int velY = VEL_PELOTA;
-        SDL_Rect rect = { WIN_WIDTH / 2, WIN_HEIGHT / 2, 10, 10 };
+        float velX = VEL_PELOTA;
+        float velY = VEL_PELOTA;
+        SDL_Rect rect = { (WIN_WIDTH / 2) , WIN_HEIGHT / 2, 10, 10};
     };
 
     bola pelotita;
@@ -131,14 +137,21 @@ int main(int argc, char* argv[]) {
     SDL_Event event;
 
     //defino diferentes estados utiles
-    bool sound = 1;
-    bool running = 1;
+    struct estadosDeJuego {
+        bool sound = 1;
+        bool running = 1;
+        bool pause = 0;
+        int tiempo = 120;
+    };
 
-    while (running) {
+    estadosDeJuego game;
+    
+
+    while (game.running) {
         //me dijo un pajarito que esto anda pero ni idea
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
-                running = false;
+                game.running = false;
             }
         }
 
@@ -155,10 +168,13 @@ int main(int argc, char* argv[]) {
         if (keystates[SDL_SCANCODE_DOWN] && flapDer.y <= (WIN_HEIGHT - FLAP_HEIGHT)) flapDer.y += VEL_FLAP;
 
         //teclas de accesibilidad
-        if (keystates[SDL_SCANCODE_Q]) running = false;
-        if (keystates[SDL_SCANCODE_M]) sound = false;
+        if (keystates[SDL_SCANCODE_Q]) game.running = false;
+        if (keystates[SDL_SCANCODE_M]) game.sound = false;
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+
+        //fondo
+        SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
 
         //dibujo la pelotita de blanco
@@ -170,20 +186,34 @@ int main(int argc, char* argv[]) {
             pelotita.velY = -pelotita.velY;
         }
 
-        //chequeamos si el jugador 2 anoto un punto
-        if (pelotita.rect.x <= WIN_WIDTH) {
+        //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
+        if (pelotita.rect.x >= WIN_WIDTH) {
             jugador1score++;
-        }
-
-        //chequeamos si el jugador 2 anoto un punto
-        if (pelotita.rect.x <= 0 ) {
-            jugador2score++;
-        }
-
-        //chequeamos de forma bruta? colisiones con el jugador 1
-        if (flapDer.x >= pelotita.rect.x >= (flapDer.x + FLAP_HEIGHT)) {
+            pelotita.rect.y = WIN_HEIGHT / 2;
+            pelotita.rect.x = WIN_WIDTH / 2;
+            game.pause = 1;
             pelotita.velX = -pelotita.velX;
         }
+
+        //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
+        if (pelotita.rect.x <= 0) {
+            jugador2score++;
+            pelotita.rect.y = WIN_HEIGHT / 2;
+            pelotita.rect.x = WIN_WIDTH / 2;
+            game.pause = 1;
+            pelotita.velX = -pelotita.velX;
+        }
+
+        //chequeamos colisiones con la pelota en la cara interna del jugador 2
+        if (((FLAP_WIDTH * 2) == pelotita.rect.x) && (flapIzq.y <= pelotita.rect.y) && (pelotita.rect.y <= (flapIzq.y + FLAP_HEIGHT))) {
+            pelotita.velX = -pelotita.velX;
+        }
+
+        //chequeamos colisiones con la pelota en la cara interna del jugador 1
+        if (((WIN_WIDTH - (FLAP_WIDTH * 2)) == pelotita.rect.x) && (flapDer.y <= pelotita.rect.y) && (pelotita.rect.y <= (flapDer.y + FLAP_HEIGHT))) {
+            pelotita.velX = -pelotita.velX;
+        }
+
         //manejamos el movimiento de la pelota
         pelotita.rect.x += pelotita.velX;
         pelotita.rect.y += pelotita.velY;
@@ -201,6 +231,10 @@ int main(int argc, char* argv[]) {
         //mostrar en pantalla
         SDL_RenderPresent(renderer);
 
+        if (game.pause) {
+            SDL_Delay(1250);
+            game.pause = 0;
+        }
         SDL_Delay(16); //demora de dibjuado entre bucles
     }
 
@@ -212,6 +246,3 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
-
-
