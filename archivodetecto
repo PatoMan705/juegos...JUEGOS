@@ -6,6 +6,8 @@ hacer movimeinto de la pelota                   CONSEGUIDO 21/06/2025 01:09
 hacer las colisiones de la pelota con los bordes CONSEGUIDO 21/06/2025 01:45
 hacer las colisiones de la pelota con los jugadores     CONSEGUIDO PARCIALMENTE, despues de todos los cuba libres nose como es que anda
 CONSEGUIDO 22/06/2025 tras razonar un poco mejor los codigos de mi yo borracho, los hice andar, que cosa copada
+extra, hacer posible jugagar en multiplayer
+agregar colores bonitos.
 
 SDL  TTF
 
@@ -49,10 +51,10 @@ using namespace std;
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 const int WIN_WIDTH = 1200;
 const int WIN_HEIGHT = 600;
-const float FLAP_HEIGHT = (WIN_WIDTH / 10);
-const float FLAP_WIDTH = (WIN_HEIGHT / 20);
+const int FLAP_HEIGHT = (WIN_WIDTH / 10);
+const int FLAP_WIDTH = (WIN_HEIGHT / 20);
 const int VEL_FLAP = 15;
-const float VEL_PELOTA = 10;
+const int VEL_PELOTA = 10;
 
 const int A = 10;
 
@@ -83,6 +85,7 @@ int main(int argc, char* argv[]) {
     //luego el eje x, luego el y,
     //luego ancho, luego alto,
     //luego una FLAG propia de la funcion la 4 es la shown, la 3 sirve para pantalla completa
+
     SDL_Window* window = SDL_CreateWindow(
         "Pong De Recreo",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -112,19 +115,31 @@ int main(int argc, char* argv[]) {
     }
 
     /*---------------------------------------------------------------------------------------------------------
-    
     Para definir las posiciones inciales de los flaps utilice las propias medidas de los mimsmos como separadores
     de esta forma en un futuro si quiero cambiar el ancho y largo de la pantalla puedo hacerlo sin ningun problema
     y en sistesis no se rompe nada :) nota menta 22/06/2025. ahora que vimos structs, la proxima vez lo metes todos
     estos calculos raros en el struct y les das nombres adecuados, pero para la proxima, ahora no nos da el tiempo.
-    
+    22/06/2025 15:27 alfinal se cambio todo por structs xd
     ----------------------------------------------------------------------------------------------------------------*/
 
-    SDL_Rect flapDer = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Azul (jugador 1)
-    SDL_Rect flapIzq = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Rojo (jugador 2
-   
-    int jugador1score = 0; //bastante autoexplicativo
-    int jugador2score = 0;
+    struct Flaper {
+        SDL_Rect rect;
+        int vel = VEL_FLAP;
+        int velCPU = VEL_FLAP * 0.5;
+        int puntaje = 0;
+        bool cpu = 0;
+        bool ganar = 0;
+    };
+
+    Flaper jugadorIzq;
+
+    jugadorIzq.rect = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT };
+    jugadorIzq.cpu = 1;
+
+    Flaper jugadorDer;
+
+    jugadorDer.rect = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT };
+    jugadorDer.cpu = 1;
     
     struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
         float velX = VEL_PELOTA;
@@ -155,17 +170,35 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        //esta linea supercopada te permite leer el estado del teclado en TODO momento
-        //muy util para evitar conflictos en multiplayer
-        const Uint8* keystates = SDL_GetKeyboardState(NULL);
+        const Uint8* keystates = SDL_GetKeyboardState(NULL);                 //esto de aca te permite leer el estado del teclado, NECESARIO para manejar multiples inputs (multiplayer)
 
         //movimiento para flapIzquierdo (WS) delimitados por la pantalla
-        if (keystates[SDL_SCANCODE_W] && flapIzq.y >= 0) flapIzq.y -= VEL_FLAP;
-        if (keystates[SDL_SCANCODE_S] && flapIzq.y <= (WIN_HEIGHT - FLAP_HEIGHT)) flapIzq.y += VEL_FLAP;
+        //movimiento para Jugador Derecho
+        if (jugadorIzq.cpu) { //si es una maquina le doy esta ia simple y se termino =)
 
-        //movimiento para flapDerecho (Flechitas ArribaAbajo) delimitados por la pantalla
-        if (keystates[SDL_SCANCODE_UP] && flapDer.y >= 0) flapDer.y -= VEL_FLAP;
-        if (keystates[SDL_SCANCODE_DOWN] && flapDer.y <= (WIN_HEIGHT - FLAP_HEIGHT)) flapDer.y += VEL_FLAP;
+            if (jugadorIzq.rect.y >= 0 && (pelotita.rect.y <= (jugadorIzq.rect.y + (FLAP_HEIGHT / 2))))
+                {jugadorIzq.rect.y -= jugadorIzq.velCPU;}
+            if (jugadorIzq.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT) && (pelotita.rect.y >= (jugadorIzq.rect.y + (FLAP_HEIGHT / 2))))
+                {jugadorIzq.rect.y += jugadorIzq.velCPU;}
+        }
+        else { //si no es cpu le permito escanear el teclado
+            if (keystates[SDL_SCANCODE_W] && jugadorIzq.rect.y >= 0) jugadorIzq.rect.y -= jugadorIzq.vel;
+            if (keystates[SDL_SCANCODE_S] && jugadorIzq.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT)) jugadorIzq.rect.y += jugadorIzq.vel;
+        }
+
+        //movimiento para Jugador Derecho
+        if (jugadorDer.cpu) { //si es una maquina le doy esta ia simple y se termino =)
+            
+            if (jugadorDer.rect.y >= 0 && (pelotita.rect.y <= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
+                {jugadorDer.rect.y -= jugadorDer.velCPU;}
+            if (jugadorDer.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT) && (pelotita.rect.y >= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
+                {jugadorDer.rect.y += jugadorDer.velCPU;}
+
+        } else { //si no es cpu le permito escanear el teclado
+            if (keystates[SDL_SCANCODE_UP] && jugadorDer.rect.y >= 0) jugadorDer.rect.y -= jugadorDer.vel;
+            if (keystates[SDL_SCANCODE_DOWN] && jugadorDer.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT)) jugadorDer.rect.y += jugadorDer.vel;
+            }
+        
 
         //teclas de accesibilidad
         if (keystates[SDL_SCANCODE_Q]) game.running = false;
@@ -188,7 +221,7 @@ int main(int argc, char* argv[]) {
 
         //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
         if (pelotita.rect.x >= WIN_WIDTH) {
-            jugador1score++;
+            jugadorDer.puntaje++;
             pelotita.rect.y = WIN_HEIGHT / 2;
             pelotita.rect.x = WIN_WIDTH / 2;
             game.pause = 1;
@@ -197,7 +230,7 @@ int main(int argc, char* argv[]) {
 
         //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
         if (pelotita.rect.x <= 0) {
-            jugador2score++;
+            jugadorIzq.puntaje++;
             pelotita.rect.y = WIN_HEIGHT / 2;
             pelotita.rect.x = WIN_WIDTH / 2;
             game.pause = 1;
@@ -205,12 +238,12 @@ int main(int argc, char* argv[]) {
         }
 
         //chequeamos colisiones con la pelota en la cara interna del jugador 2
-        if (((FLAP_WIDTH * 2) == pelotita.rect.x) && (flapIzq.y <= pelotita.rect.y) && (pelotita.rect.y <= (flapIzq.y + FLAP_HEIGHT))) {
+        if (((FLAP_WIDTH * 2) == pelotita.rect.x) && (jugadorIzq.rect.y <= pelotita.rect.y) && (pelotita.rect.y <= (jugadorIzq.rect.y + FLAP_HEIGHT))) {
             pelotita.velX = -pelotita.velX;
         }
 
         //chequeamos colisiones con la pelota en la cara interna del jugador 1
-        if (((WIN_WIDTH - (FLAP_WIDTH * 2)) == pelotita.rect.x) && (flapDer.y <= pelotita.rect.y) && (pelotita.rect.y <= (flapDer.y + FLAP_HEIGHT))) {
+        if (((WIN_WIDTH - (FLAP_WIDTH * 2)) == pelotita.rect.x) && (jugadorIzq.rect.y <= pelotita.rect.y) && (pelotita.rect.y <= (jugadorIzq.rect.y + FLAP_HEIGHT))) {
             pelotita.velX = -pelotita.velX;
         }
 
@@ -220,12 +253,12 @@ int main(int argc, char* argv[]) {
 
         //dibujar el flapIzquierdo
         SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-        SDL_RenderFillRect(renderer, &flapIzq);
+        SDL_RenderFillRect(renderer, &jugadorIzq.rect);
 
 
         //dibujar el flapDerecho
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderFillRect(renderer, &flapDer);
+        SDL_RenderFillRect(renderer, &jugadorDer.rect);
 
 
         //mostrar en pantalla
