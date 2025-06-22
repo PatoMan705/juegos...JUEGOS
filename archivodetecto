@@ -28,26 +28,22 @@ Añadir a lo anterior soniditos de osiloscopio
 */
 
 
-#include <SDL.h> //SDL basico
-#include <SDL_mixer.h> //audio con sld
-#include <SDL_image.h> //imagenes con esedeele
-#include <SDL_ttf.h> //manejar fuentes de texto en pantalla
+#include <SDL2/SDL.h> //SDL basico
 
 #include <fstream> // manejo de archivos
 
 #include <iostream>
-#include <Windows.h>
 #include <time.h>
 #include <string>
 
 using namespace std;
 
-const int WIN_WIDTH = 1000;
-const int WIN_HEIGHT = 600;
-const float FLAP_HEIGHT = (WIN_WIDTH / 10);
-const float FLAP_WIDTH = (WIN_HEIGHT / 20);
+const int WIN_WIDTH = 2000;
+const int WIN_HEIGHT = 1000;
+const int FLAP_HEIGHT = (WIN_WIDTH / 10);
+const int FLAP_WIDTH = (WIN_HEIGHT / 20);
 const int VEL_FLAP = 15;
-const int VEL_PELOTA = 5;
+const int VEL_PELOTA = 10;
 
 const int A = 10;
 
@@ -85,26 +81,9 @@ int main(int argc, char* argv[]) {
         SDL_WINDOW_SHOWN
     );
 
-    if (window == nullptr) {
-        cerr << "Error al crear la ventana: " << SDL_GetError() << endl;
-        SDL_Quit();
-        return 1;
-    }
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    if (renderer == nullptr) {
-        cerr << "Error al crear el renderer: " << SDL_GetError() << endl;
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        cerr << "Error al iniciar SDL_image: " << IMG_GetError() << endl;
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+  
 
     /*---------------------------------------------------------------------------------------------------------
     
@@ -117,10 +96,10 @@ int main(int argc, char* argv[]) {
     SDL_Rect flapDer = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Azul (jugador 1)
     SDL_Rect flapIzq = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT }; //rectangulo Rojo (jugador 2
    
-    int jugador1score = 0; //bastante autoexplicativo
+    int jugador1score = 0; //bastante autoexplicati. vo
     int jugador2score = 0;
     
-    struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
+        struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
         int velX = VEL_PELOTA;
         int velY = VEL_PELOTA;
         SDL_Rect rect = { WIN_WIDTH / 2, WIN_HEIGHT / 2, 10, 10 };
@@ -158,7 +137,8 @@ int main(int argc, char* argv[]) {
         if (keystates[SDL_SCANCODE_Q]) running = false;
         if (keystates[SDL_SCANCODE_M]) sound = false;
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+//fondo
+        SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
         SDL_RenderClear(renderer);
 
         //dibujo la pelotita de blanco
@@ -170,20 +150,31 @@ int main(int argc, char* argv[]) {
             pelotita.velY = -pelotita.velY;
         }
 
-        //chequeamos si el jugador 2 anoto un punto
-        if (pelotita.rect.x <= WIN_WIDTH) {
+        //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
+        if (pelotita.rect.x >= WIN_WIDTH) {
             jugador1score++;
+            pelotita.rect.y = WIN_HEIGHT  / 2;
+            pelotita.rect.x = WIN_WIDTH  / 2;
         }
 
-        //chequeamos si el jugador 2 anoto un punto
+        //chequeamos si el jugador 2 anoto un punto y reseteamos la pelota
         if (pelotita.rect.x <= 0 ) {
             jugador2score++;
+            pelotita.rect.y = WIN_HEIGHT  / 2;
+            pelotita.rect.x = WIN_WIDTH  / 2;
         }
 
         //chequeamos de forma bruta? colisiones con el jugador 1
-        if (flapDer.x >= pelotita.rect.x >= (flapDer.x + FLAP_HEIGHT)) {
-            pelotita.velX = -pelotita.velX;
-        }
+       
+        
+        //chequeamos de forma bruta? colisiones con el jugador 2
+        if (((WIN_WIDTH - (FLAP_WIDTH * 2)) <= pelotita.rect.x) && (flapDer.y <= pelotita.rect.y <= (flapDer.y + FLAP_HEIGHT))) {
+            	pelotita.velX = -pelotita.velX;
+        	}
+        
+        //chequeamos de forma bruta? colisiones con el jugador 2
+        
+        
         //manejamos el movimiento de la pelota
         pelotita.rect.x += pelotita.velX;
         pelotita.rect.y += pelotita.velY;
@@ -205,13 +196,10 @@ int main(int argc, char* argv[]) {
     }
 
     //limpiamos la memoria
-    IMG_Quit();
+    
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
     return 0;
 }
-
-
-
