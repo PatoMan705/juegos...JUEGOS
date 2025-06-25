@@ -71,6 +71,11 @@ void guardarPuntaje(string nombreArchivo, string nombreJugador, int puntajeJugad
     archivo.close(); //siempre que se habre un archivo, se cierra al final.
 }
 
+void gameloop() {
+
+
+}
+
 int main(int argc, char* argv[]) {
 
     srand(time(NULL)); //inicializamos la semilla
@@ -140,11 +145,11 @@ int main(int argc, char* argv[]) {
 
     jugadorDer.rect = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT };
     jugadorDer.cpu = 1;
-    
+
     struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
         float velX = VEL_PELOTA;
         float velY = VEL_PELOTA;
-        SDL_Rect rect = { (WIN_WIDTH / 2) , WIN_HEIGHT / 2, 10, 10};
+        SDL_Rect rect = { (WIN_WIDTH / 2) , WIN_HEIGHT / 2, 10, 10 };
     };
 
     bola pelotita;
@@ -160,8 +165,33 @@ int main(int argc, char* argv[]) {
     };
 
     estadosDeJuego game;
-    
 
+    struct pantallas {
+
+        SDL_Rect titulo{ WIN_WIDTH / 3,0,WIN_WIDTH * 2 / 3,WIN_HEIGHT / 3 };
+        SDL_Rect inicio{ titulo.x, 200, 400, 400};
+        SDL_Rect opciones {inicio.x, inicio.y+FLAP_WIDTH, 200, 80};
+        SDL_Rect salir{ opciones.x, opciones.y + FLAP_WIDTH, 200, 80 };
+
+    };
+
+    pantallas menu;
+
+    while (game.running) {
+
+        SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
+        SDL_RenderClear(renderer);
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(renderer, &menu.titulo);
+
+
+
+        //mostrar en pantalla
+        SDL_RenderPresent(renderer);
+    }
+
+    //GAMELOOP HERE
     while (game.running) {
         //me dijo un pajarito que esto anda pero ni idea
         while (SDL_PollEvent(&event)) {
@@ -177,9 +207,13 @@ int main(int argc, char* argv[]) {
         if (jugadorIzq.cpu) { //si es una maquina le doy esta ia simple y se termino =)
 
             if (jugadorIzq.rect.y >= 0 && (pelotita.rect.y <= (jugadorIzq.rect.y + (FLAP_HEIGHT / 2))))
-                {jugadorIzq.rect.y -= jugadorIzq.velCPU;}
+            {
+                jugadorIzq.rect.y -= jugadorIzq.velCPU;
+            }
             if (jugadorIzq.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT) && (pelotita.rect.y >= (jugadorIzq.rect.y + (FLAP_HEIGHT / 2))))
-                {jugadorIzq.rect.y += jugadorIzq.velCPU;}
+            {
+                jugadorIzq.rect.y += jugadorIzq.velCPU;
+            }
         }
         else { //si no es cpu le permito escanear el teclado
             if (keystates[SDL_SCANCODE_W] && jugadorIzq.rect.y >= 0) jugadorIzq.rect.y -= jugadorIzq.vel;
@@ -188,17 +222,22 @@ int main(int argc, char* argv[]) {
 
         //movimiento para Jugador Derecho
         if (jugadorDer.cpu) { //si es una maquina le doy esta ia simple y se termino =)
-            
-            if (jugadorDer.rect.y >= 0 && (pelotita.rect.y <= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
-                {jugadorDer.rect.y -= jugadorDer.velCPU;}
-            if (jugadorDer.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT) && (pelotita.rect.y >= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
-                {jugadorDer.rect.y += jugadorDer.velCPU;}
 
-        } else { //si no es cpu le permito escanear el teclado
+            if (jugadorDer.rect.y >= 0 && (pelotita.rect.y <= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
+            {
+                jugadorDer.rect.y -= jugadorDer.velCPU;
+            }
+            if (jugadorDer.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT) && (pelotita.rect.y >= (jugadorDer.rect.y + (FLAP_HEIGHT / 2))))
+            {
+                jugadorDer.rect.y += jugadorDer.velCPU;
+            }
+
+        }
+        else { //si no es cpu le permito escanear el teclado
             if (keystates[SDL_SCANCODE_UP] && jugadorDer.rect.y >= 0) jugadorDer.rect.y -= jugadorDer.vel;
             if (keystates[SDL_SCANCODE_DOWN] && jugadorDer.rect.y <= (WIN_HEIGHT - FLAP_HEIGHT)) jugadorDer.rect.y += jugadorDer.vel;
-            }
-        
+        }
+
 
         //teclas de accesibilidad
         if (keystates[SDL_SCANCODE_Q]) game.running = false;
