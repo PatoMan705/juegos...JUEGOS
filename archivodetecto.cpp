@@ -60,6 +60,17 @@ const int VEL_PELOTA = 10;
 
 const int A = 10;
 
+struct cuadroTexto {
+
+    bool select = 0;
+    int fontSize;
+    SDL_Rect rect;
+    string text;
+    SDL_Color color = { 255, 255, 255 };
+    SDL_Color colorB = { 200, 200, 200 };
+    SDL_Texture* texture = nullptr;
+};
+
 enum {
     MENU,
     JUEGO,
@@ -68,48 +79,124 @@ enum {
     SALIR
 };
 
-void guardarPuntaje(string nombreArchivo, string nombreJugador, int puntajeJugador) {
+void guardarPuntaje(string nombreArchivo, string Jugador1, int puntajeJugador1, string Jugador2, int puntajeJugador2) {
 
     fstream archivo;
     archivo.open(nombreArchivo + ".csv", ios::app); // ios::in escribe al inicio y sobre escribe; ios::app escribe al final sin jorobar otros datos.
 
+    //logica para definir quien gano
+
     if (archivo.is_open()) {
-        archivo << nombreJugador << ";" << puntajeJugador << endl;
+        archivo << Jugador1 << ";" << puntajeJugador1 << endl;
     }
     else cerr << "Error al abrir/crear el archivo " << endl;
 
     archivo.close(); //siempre que se habre un archivo, se cierra al final.
 }
 
-void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
-    
-    const Uint8* keystates = SDL_GetKeyboardState(NULL);                 //esto de aca te permite leer el estado del teclado, NECESARIO para manejar multiples inputs (multiplayer)
+SDL_Texture* updateTexture(SDL_Renderer* renderer, TTF_Font* font, cuadroTexto& cuadro) {
 
-    struct pantallas {
-
-        SDL_Rect titulo{ WIN_WIDTH / 5, 0, WIN_WIDTH * 3 / 5, WIN_HEIGHT / 4 };
-        SDL_Rect inicio{ WINX_MID - FLAP_HEIGHT, 200, 400, 400 };
-        SDL_Rect opciones{ inicio.x, inicio.y + FLAP_WIDTH, 200, 80 };
-        SDL_Rect salir{ opciones.x, opciones.y + FLAP_WIDTH, 200, 80 };
-        bool running = 1;
-        bool quit = 0;
-
-    };
-
-    pantallas menu;
-
-    while (menu.running) {
-
-        SDL_Surface* TTF_RenderText_Solid(TTF_Font* font,
-            'const char* text', SDL_Color fg);
-
-        SDL_Texture* SDL_CreateTextureFromSurface(SDL_Renderer* renderer, SDL_Surface* surface);
-        //mostrar en pantalla
-        SDL_RenderPresent(renderer);
-
-        if (keystates[SDL_SCANCODE_Q]) menu.running = false;
+    // Liberar textura anterior si existe
+    if (cuadro.texture) {
+        SDL_DestroyTexture(cuadro.texture);
+        cuadro.texture = nullptr;
     }
 
+    // Crear superficie
+    SDL_Surface* surface = TTF_RenderText_Solid(font, cuadro.text.c_str(), cuadro.color);
+    if (!surface) {
+        cerr << "Error al crear superficie para '" << cuadro.text << "': " << TTF_GetError() << endl;
+        return nullptr;
+    }
+
+    // Crear textura
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        cerr << "Error al crear textura para '" << cuadro.text << "': " << SDL_GetError() << endl;
+        SDL_FreeSurface(surface);
+        return nullptr;
+    }
+
+    SDL_FreeSurface(surface);
+    cuadro.texture = texture;
+    return texture;
+}
+
+void meterTexto(SDL_Renderer* renderer, TTF_Font* font, cuadroTexto& cuadro) {
+    // Asegurarse de que la textura esté actualizada
+    if (!cuadro.texture) {
+        updateTexture(renderer, font, cuadro);
+    }
+
+    // Dibujar rectángulo de fondo
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Negro
+    SDL_RenderFillRect(renderer, &cuadro.rect);
+
+    // Renderizar textura
+    if (cuadro.texture) {
+        SDL_RenderCopy(renderer, cuadro.texture, NULL, &cuadro.rect);
+    }
+}
+
+void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,
+    cuadroTexto& titulo, cuadroTexto& inicio, cuadroTexto& opciones, cuadroTexto& salir) {
+    bool ismenuon = true;
+    SDL_Event event;
+    int selectedOption = 0; // 0: inicio, 1: opciones, 2: salir
+
+    while (ismenuon) {
+        // Manejo de eventos
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                ismenuon = false;
+            }
+            else if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                case SDLK_UP:
+                    selectedOption = (selectedOption - 1 + 3) % 3; // Ciclo hacia arriba
+                    break;
+                case SDLK_DOWN:
+                    selectedOption = (selectedOption + 1) % 3; // Ciclo hacia abajo
+                    break;
+                case SDLK_q:
+                    ismenuon = false;
+                    break;
+                }
+            }
+        }
+
+        // Actualizar selección
+        inicio.select = (selectedOption == 0);
+        opciones.select = (selectedOption == 1);
+        salir.select = (selectedOption == 2);
+
+        // Actualizar colores según selección
+        inicio.color = inicio.select ? SDL_Color{ 0, 255, 0, 255 } : SDL_Color{ 255, 255, 255, 255 };
+        opciones.color = opciones.select ? SDL_Color{ 0, 255, 0, 255 } : SDL_Color{ 255, 255, 255, 255 };
+        salir.color = salir.select ? SDL_Color{ 0, 255, 0, 255 } : SDL_Color{ 255, 255, 255, 255 };
+
+        // Actualizar texturas
+        updateTexture(renderer, font, inicio);
+        updateTexture(renderer, font, opciones);
+        updateTexture(renderer, font, salir);
+        // No actualizamos titulo porque no cambia
+
+        // Limpieza de pantalla
+        SDL_SetRenderDrawColor(renderer, 7, 71, 1, 255); // Verde oscuro
+        SDL_RenderClear(renderer);
+
+        // Dibujar textos con meterTexto
+        meterTexto(renderer, font, titulo);
+        meterTexto(renderer, font, inicio);
+        meterTexto(renderer, font, opciones);
+        meterTexto(renderer, font, salir);
+
+        // Mostrar en pantalla
+        SDL_RenderPresent(renderer);
+
+        // Controlar la velocidad
+        SDL_Delay(16); // ~60 FPS
+    }
 }
 
 
@@ -128,10 +215,12 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
         int puntaje = 0;
         bool cpu = 0;
         bool ganar = 0;
+        string nombre;
     };
 
     Flaper jugadorIzq;
 
+    jugadorIzq.nombre = "Scorch";
     jugadorIzq.rect = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT };
     jugadorIzq.cpu = 1;
 
@@ -215,7 +304,7 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
 
 
         //fondo
-        SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
+        SDL_SetRenderDrawColor(renderer, 7, 71, 1, 255);
         SDL_RenderClear(renderer);
 
         //dibujo la pelotita de blanco
@@ -279,6 +368,7 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
         SDL_Delay(16); //demora de dibjuado entre bucles
     }
 
+    //guardarPuntaje("Puntajes","") guardar ahciovos
 }
 
 
@@ -325,10 +415,58 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "error: font not found\n");
         exit(EXIT_FAILURE);
     }
-    gamemenu(window, renderer, font);
+
+    SDL_Surface* surface = TTF_RenderText_Solid(font, "hello there, general kenobi", {255, 255, 255 });
+    if (!surface) {
+        cerr << "Error al crear la superficie de texto: " << TTF_GetError() << endl;
+        TTF_CloseFont(font);
+        TTF_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        cerr << "Error al crear la textura de texto: " << SDL_GetError() << endl;
+        SDL_FreeSurface(surface);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    
+    
+    cuadroTexto titulo;
+    titulo.rect = { WIN_WIDTH / 5, 0, WIN_WIDTH * 3 / 5, WIN_HEIGHT / 4 };
+    titulo.text = "PONG DE RECREO";
+
+    cuadroTexto inicio;
+    inicio.rect = { WINX_MID - FLAP_HEIGHT, 200, 400, 400 };
+    inicio.text = "INICIO";
+
+    cuadroTexto opciones;
+    opciones.rect = { inicio.rect.x, inicio.rect.y + FLAP_WIDTH, 200, 80 };
+    opciones.text = "INICIO";
+
+    cuadroTexto salir;
+    salir.rect = { opciones.rect.x, opciones.rect.y + FLAP_WIDTH, 200, 80 };
+    salir.text = "SALIR";
+
+    gamemenu(window, renderer, font, titulo, inicio, opciones, salir);
 
     //gameloop(window, renderer, font);
 
+
+
+    //Liberar texturas
+    SDL_DestroyTexture(titulo.texture);
+    SDL_DestroyTexture(inicio.texture);
+    SDL_DestroyTexture(opciones.texture);
+    SDL_DestroyTexture(salir.texture);
     //limpiamos la memoria
     IMG_Quit();
     SDL_DestroyRenderer(renderer);
