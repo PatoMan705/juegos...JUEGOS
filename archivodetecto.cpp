@@ -51,12 +51,22 @@ using namespace std;
 ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 const int WIN_WIDTH = 1200;
 const int WIN_HEIGHT = 600;
+const int WINX_MID = WIN_WIDTH / 2;
+const int WINY_MID = WIN_HEIGHT / 2;
 const int FLAP_HEIGHT = (WIN_WIDTH / 10);
 const int FLAP_WIDTH = (WIN_HEIGHT / 20);
 const int VEL_FLAP = 15;
 const int VEL_PELOTA = 10;
 
 const int A = 10;
+
+enum {
+    MENU,
+    JUEGO,
+    PAUSA,
+    OPCIONES,
+    SALIR
+};
 
 void guardarPuntaje(string nombreArchivo, string nombreJugador, int puntajeJugador) {
 
@@ -71,62 +81,46 @@ void guardarPuntaje(string nombreArchivo, string nombreJugador, int puntajeJugad
     archivo.close(); //siempre que se habre un archivo, se cierra al final.
 }
 
-void gameloop() {
+void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
+    
+    const Uint8* keystates = SDL_GetKeyboardState(NULL);                 //esto de aca te permite leer el estado del teclado, NECESARIO para manejar multiples inputs (multiplayer)
 
+    struct pantallas {
+
+        SDL_Rect titulo{ WIN_WIDTH / 5, 0, WIN_WIDTH * 3 / 5, WIN_HEIGHT / 4 };
+        SDL_Rect inicio{ WINX_MID - FLAP_HEIGHT, 200, 400, 400 };
+        SDL_Rect opciones{ inicio.x, inicio.y + FLAP_WIDTH, 200, 80 };
+        SDL_Rect salir{ opciones.x, opciones.y + FLAP_WIDTH, 200, 80 };
+        bool running = 1;
+        bool quit = 0;
+
+    };
+
+    pantallas menu;
+
+    while (menu.running) {
+
+        SDL_Surface* TTF_RenderText_Solid(TTF_Font* font,
+            'const char* text', SDL_Color fg);
+
+        SDL_Texture* SDL_CreateTextureFromSurface(SDL_Renderer* renderer, SDL_Surface* surface);
+        //mostrar en pantalla
+        SDL_RenderPresent(renderer);
+
+        if (keystates[SDL_SCANCODE_Q]) menu.running = false;
+    }
 
 }
 
-int main(int argc, char* argv[]) {
 
-    srand(time(NULL)); //inicializamos la semilla
-
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        cerr << "Error al iniciar SDL: " << SDL_GetError() << endl;
-        return 1;
-    }
-
-    //genero un struct de nombre window usando la funcion de SDL_CreateWindow
-    //le paso el nombre de la ventana
-    //luego el eje x, luego el y,
-    //luego ancho, luego alto,
-    //luego una FLAG propia de la funcion la 4 es la shown, la 3 sirve para pantalla completa
-
-    SDL_Window* window = SDL_CreateWindow(
-        "Pong De Recreo",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        WIN_WIDTH, WIN_HEIGHT,
-        SDL_WINDOW_SHOWN
-    );
-
-    if (window == nullptr) {
-        cerr << "Error al crear la ventana: " << SDL_GetError() << endl;
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-    if (renderer == nullptr) {
-        cerr << "Error al crear el renderer: " << SDL_GetError() << endl;
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        cerr << "Error al iniciar SDL_image: " << IMG_GetError() << endl;
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    /*---------------------------------------------------------------------------------------------------------
-    Para definir las posiciones inciales de los flaps utilice las propias medidas de los mimsmos como separadores
-    de esta forma en un futuro si quiero cambiar el ancho y largo de la pantalla puedo hacerlo sin ningun problema
-    y en sistesis no se rompe nada :) nota menta 22/06/2025. ahora que vimos structs, la proxima vez lo metes todos
-    estos calculos raros en el struct y les das nombres adecuados, pero para la proxima, ahora no nos da el tiempo.
-    22/06/2025 15:27 alfinal se cambio todo por structs xd
-    ----------------------------------------------------------------------------------------------------------------*/
-
+void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
+        /*---------------------------------------------------------------------------------------------------------
+       Para definir las posiciones inciales de los flaps utilice las propias medidas de los mimsmos como separadores
+       de esta forma en un futuro si quiero cambiar el ancho y largo de la pantalla puedo hacerlo sin ningun problema
+       y en sistesis no se rompe nada :) nota menta 22/06/2025. ahora que vimos structs, la proxima vez lo metes todos
+       estos calculos raros en el struct y les das nombres adecuados, pero para la proxima, ahora no nos da el tiempo.
+       22/06/2025 15:27 alfinal se cambio todo por structs xd
+       ----------------------------------------------------------------------------------------------------------------*/
     struct Flaper {
         SDL_Rect rect;
         int vel = VEL_FLAP;
@@ -166,32 +160,7 @@ int main(int argc, char* argv[]) {
 
     estadosDeJuego game;
 
-    struct pantallas {
-
-        SDL_Rect titulo{ WIN_WIDTH / 3,0,WIN_WIDTH * 2 / 3,WIN_HEIGHT / 3 };
-        SDL_Rect inicio{ titulo.x, 200, 400, 400};
-        SDL_Rect opciones {inicio.x, inicio.y+FLAP_WIDTH, 200, 80};
-        SDL_Rect salir{ opciones.x, opciones.y + FLAP_WIDTH, 200, 80 };
-
-    };
-
-    pantallas menu;
-
-    while (game.running) {
-
-        SDL_SetRenderDrawColor(renderer, 20, 20, 20, 255);
-        SDL_RenderClear(renderer);
-
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &menu.titulo);
-
-
-
-        //mostrar en pantalla
-        SDL_RenderPresent(renderer);
-    }
-
-    //GAMELOOP HERE
+    //GAMELOOP HERE BOY
     while (game.running) {
         //me dijo un pajarito que esto anda pero ni idea
         while (SDL_PollEvent(&event)) {
@@ -304,11 +273,61 @@ int main(int argc, char* argv[]) {
         SDL_RenderPresent(renderer);
 
         if (game.pause) {
-            SDL_Delay(1250);
+            SDL_Delay(500);
             game.pause = 0;
         }
         SDL_Delay(16); //demora de dibjuado entre bucles
     }
+
+}
+
+
+int main(int argc, char* argv[]) {
+
+    srand(time(NULL)); //inicializamos la semilla
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        cerr << "Error al iniciar SDL: " << SDL_GetError() << endl;
+        return 1;
+    }
+
+    //genero un struct de nombre window usando la funcion de SDL_CreateWindow
+    //le paso el nombre de la ventana
+    //luego el eje x, luego el y,
+    //luego ancho, luego alto,
+    //luego una FLAG propia de la funcion la 4 es la shown, la 3 sirve para pantalla completa
+
+    SDL_Window* window = SDL_CreateWindow ("Pong De Recreo",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_SHOWN);
+
+    if (window == nullptr) {
+        cerr << "Error al crear la ventana: " << SDL_GetError() << endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+    if (renderer == nullptr) {
+        cerr << "Error al crear el renderer: " << SDL_GetError() << endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        cerr << "Error al iniciar SDL_image: " << IMG_GetError() << endl;
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    TTF_Init();
+    TTF_Font* font = TTF_OpenFont("assets\\Chalkboard.ttf", 24);
+    if (font == NULL) {
+        fprintf(stderr, "error: font not found\n");
+        exit(EXIT_FAILURE);
+    }
+    gamemenu(window, renderer, font);
+
+    //gameloop(window, renderer, font);
 
     //limpiamos la memoria
     IMG_Quit();
