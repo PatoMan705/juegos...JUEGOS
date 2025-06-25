@@ -30,7 +30,6 @@ Añadir a lo anterior soniditos de osiloscopio
 
 */
 
-
 #include <SDL.h> //SDL basico
 #include <SDL_mixer.h> //audio con sld
 #include <SDL_image.h> //imagenes con esedeele
@@ -59,6 +58,8 @@ const int VEL_FLAP = 15;
 const int VEL_PELOTA = 10;
 
 const int A = 10;
+//esto de aca te permite leer el estado del teclado, NECESARIO para manejar multiples inputs (multiplayer)
+const Uint8* keystates = SDL_GetKeyboardState(NULL);
 
 struct cuadroTexto {
 
@@ -69,14 +70,6 @@ struct cuadroTexto {
     SDL_Color color = { 255, 255, 255 };
     SDL_Color colorB = { 200, 200, 200 };
     SDL_Texture* texture = nullptr;
-};
-
-enum {
-    MENU,
-    JUEGO,
-    PAUSA,
-    OPCIONES,
-    SALIR
 };
 
 void guardarPuntaje(string nombreArchivo, string Jugador1, int puntajeJugador1, string Jugador2, int puntajeJugador2) {
@@ -127,11 +120,6 @@ void meterTexto(SDL_Renderer* renderer, TTF_Font* font, cuadroTexto& cuadro) {
     if (!cuadro.texture) {
         updateTexture(renderer, font, cuadro);
     }
-
-    // Dibujar rectángulo de fondo
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Negro
-    SDL_RenderFillRect(renderer, &cuadro.rect);
-
     // Renderizar textura
     if (cuadro.texture) {
         SDL_RenderCopy(renderer, cuadro.texture, NULL, &cuadro.rect);
@@ -139,7 +127,7 @@ void meterTexto(SDL_Renderer* renderer, TTF_Font* font, cuadroTexto& cuadro) {
 }
 
 void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,
-    cuadroTexto& titulo, cuadroTexto& inicio, cuadroTexto& opciones, cuadroTexto& salir) {
+    cuadroTexto& titulo, cuadroTexto& inicio, cuadroTexto& opciones, cuadroTexto& salir, cuadroTexto& yo) {
     bool ismenuon = true;
     SDL_Event event;
     int selectedOption = 0; // 0: inicio, 1: opciones, 2: salir
@@ -176,6 +164,7 @@ void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,
         salir.color = salir.select ? SDL_Color{ 0, 255, 0, 255 } : SDL_Color{ 255, 255, 255, 255 };
 
         // Actualizar texturas
+       
         updateTexture(renderer, font, inicio);
         updateTexture(renderer, font, opciones);
         updateTexture(renderer, font, salir);
@@ -186,6 +175,7 @@ void gamemenu(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,
         SDL_RenderClear(renderer);
 
         // Dibujar textos con meterTexto
+        meterTexto(renderer, font, yo);
         meterTexto(renderer, font, titulo);
         meterTexto(renderer, font, inicio);
         meterTexto(renderer, font, opciones);
@@ -207,7 +197,7 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
        y en sistesis no se rompe nada :) nota menta 22/06/2025. ahora que vimos structs, la proxima vez lo metes todos
        estos calculos raros en el struct y les das nombres adecuados, pero para la proxima, ahora no nos da el tiempo.
        22/06/2025 15:27 alfinal se cambio todo por structs xd
-       ----------------------------------------------------------------------------------------------------------------*/
+       ------------------------------------------------------------------------------------------------------------*/
     struct Flaper {
         SDL_Rect rect;
         int vel = VEL_FLAP;
@@ -217,18 +207,6 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
         bool ganar = 0;
         string nombre;
     };
-
-    Flaper jugadorIzq;
-
-    jugadorIzq.nombre = "Scorch";
-    jugadorIzq.rect = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT };
-    jugadorIzq.cpu = 1;
-
-    Flaper jugadorDer;
-
-    jugadorDer.rect = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT };
-    jugadorDer.cpu = 1;
-
     struct bola {               //creo un sruct para meteri todo lo importante de las bolas en un mismo lugar, quizas añada un multiball
         float velX = VEL_PELOTA;
         float velY = VEL_PELOTA;
@@ -236,6 +214,15 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
     };
 
     bola pelotita;
+    Flaper jugadorIzq;
+    jugadorIzq.nombre = "Scorch";
+    jugadorIzq.rect = { FLAP_WIDTH, 0, FLAP_WIDTH, FLAP_HEIGHT };
+    jugadorIzq.cpu = 1;
+
+    Flaper jugadorDer;
+    jugadorIzq.nombre = "Legion";
+    jugadorDer.rect = { WIN_WIDTH - (FLAP_WIDTH * 2), 0, FLAP_WIDTH, FLAP_HEIGHT };
+    jugadorDer.cpu = 1;
 
     SDL_Event event;
 
@@ -257,8 +244,6 @@ void gameloop(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font) {
                 game.running = false;
             }
         }
-
-        const Uint8* keystates = SDL_GetKeyboardState(NULL);                 //esto de aca te permite leer el estado del teclado, NECESARIO para manejar multiples inputs (multiplayer)
 
         //movimiento para flapIzquierdo (WS) delimitados por la pantalla
         //movimiento para Jugador Derecho
@@ -445,20 +430,24 @@ int main(int argc, char* argv[]) {
     titulo.text = "PONG DE RECREO";
 
     cuadroTexto inicio;
-    inicio.rect = { WINX_MID - FLAP_HEIGHT, 200, 400, 400 };
+    inicio.rect = { WINX_MID - FLAP_HEIGHT, WIN_WIDTH / 5, WIN_WIDTH / 5, WIN_HEIGHT / 10 };
     inicio.text = "INICIO";
 
     cuadroTexto opciones;
-    opciones.rect = { inicio.rect.x, inicio.rect.y + FLAP_WIDTH, 200, 80 };
-    opciones.text = "INICIO";
+    opciones.rect = { inicio.rect.x, inicio.rect.y + FLAP_WIDTH + WIN_HEIGHT / 10, WIN_WIDTH / 5, WIN_HEIGHT / 10 };
+    opciones.text = "OPCIONES";
 
     cuadroTexto salir;
-    salir.rect = { opciones.rect.x, opciones.rect.y + FLAP_WIDTH, 200, 80 };
+    salir.rect = { inicio.rect.x, opciones.rect.y + FLAP_WIDTH + WIN_HEIGHT / 10, WIN_WIDTH / 5, WIN_HEIGHT / 10 };
     salir.text = "SALIR";
 
-    gamemenu(window, renderer, font, titulo, inicio, opciones, salir);
+    cuadroTexto yo;
+    yo.rect = { 0, WIN_HEIGHT - WIN_HEIGHT / 10, WIN_WIDTH / 4, 50 };
+    yo.text = "MURGIA AGUSTIN UADE L:1220705";
 
-    //gameloop(window, renderer, font);
+   // gamemenu(window, renderer, font, titulo, inicio, opciones, salir, yo);
+
+    gameloop(window, renderer, font);
 
 
 
